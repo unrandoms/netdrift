@@ -8,6 +8,8 @@ from exposor.feeds.shodan.shodan_feed import Shodan
 from exposor.feeds.zoomeye.zoomeye_feed import Zoomeye
 from exposor.feeds.fofa.fofa_feed import Fofa
 from exposor.feeds.censys.censys_feed import Censys
+from exposor.feeds.hunterhow.hunterhow_feed import HunterHow
+from exposor.feeds.greynoise.greynoise_feed import GreyNoise
 
 cpe = None
 auth_status = {}
@@ -40,6 +42,12 @@ def authenticate_feed(feed):
         email = os.getenv("FOFA_EMAIL")
         api_id = os.getenv("FOFA_API_KEY")
         auth_status["fofa"] = Fofa.auth(email, api_id)
+    elif feed == "hunterhow":
+        api_key = os.getenv("HUNTERHOW_API_KEY")
+        auth_status["hunterhow"] = HunterHow.auth(api_key)
+    elif feed == "greynoise":
+        api_key = os.getenv("GREYNOISE_API_KEY")
+        auth_status["greynoise"] = GreyNoise.auth(api_key)
     return auth_status.get(feed, False)
 
 
@@ -52,20 +60,28 @@ def concurrent_doer(feed, query, args):
 
     if feed == "shodan":
         logging.debug("Sending query to Shodan...")
-        results_shodan = Shodan.search(key=os.getenv("SHODAN_API_KEY"),queries=query, args = args, technology = cpe)
+        results_shodan = Shodan.search(key=os.getenv("SHODAN_API_KEY"), queries=query, args=args, technology=cpe)
         result_feed.append(results_shodan)
     elif feed == "zoomeye":
         logging.debug("Sending query to Zoomeye...")
-        results_zoomeye = Zoomeye.search(key=os.getenv("ZOOMEYE_API_KEY"),queries=query, args = args, technology = cpe)
+        results_zoomeye = Zoomeye.search(key=os.getenv("ZOOMEYE_API_KEY"), queries=query, args=args, technology=cpe)
         result_feed.append(results_zoomeye)
     elif feed == "fofa":
         logging.debug("Sending query to Fofa...")
-        results_fofa = Fofa.search(email=os.getenv("FOFA_EMAIL"),key=os.getenv("FOFA_API_KEY"),queries=query, args = args, technology = cpe)
+        results_fofa = Fofa.search(email=os.getenv("FOFA_EMAIL"), key=os.getenv("FOFA_API_KEY"), queries=query, args=args, technology=cpe)
         result_feed.append(results_fofa)
     elif feed == "censys":
         logging.debug("Sending query to Censys...")
-        results_censys = Censys.search(uid=os.getenv("CENSYS_API_ID"), key=os.getenv("CENSYS_API_KEY"),queries=query,args = args, technology = cpe)
+        results_censys = Censys.search(uid=os.getenv("CENSYS_API_ID"), key=os.getenv("CENSYS_API_KEY"), queries=query, args=args, technology=cpe)
         result_feed.append(results_censys)
+    elif feed == "hunterhow":
+        logging.debug("Sending query to HunterHow...")
+        results_hunterhow = HunterHow.search(api_key=os.getenv("HUNTERHOW_API_KEY"), queries=query, args=args, technology=cpe)
+        result_feed.append(results_hunterhow)
+    elif feed == "greynoise":
+        logging.debug("Sending query to GreyNoise...")
+        results_greynoise = GreyNoise.search(api_key=os.getenv("GREYNOISE_API_KEY"), queries=query, args=args, technology=cpe)
+        result_feed.append(results_greynoise)
 
 
 def concurrent_query_processor(filtered_queries, args):

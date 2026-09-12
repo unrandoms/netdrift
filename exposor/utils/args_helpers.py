@@ -55,7 +55,9 @@ def init_feed_api_keys(init_args, parser):
         "shodan": ["api_key"],
         "censys": ["api_id", "api_key"],
         "fofa": ["email", "api_key"],
-        "zoomeye": ["api_key"]
+        "zoomeye": ["api_key"],
+        "hunterhow": ["api_key"],
+        "greynoise": ["api_key"]
     }
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(script_dir)
@@ -104,7 +106,9 @@ def check_api_keys(feed_args, parser):
         "shodan": ["api_key"],
         "censys": ["api_id", "api_key"],
         "fofa": ["email", "api_key"],
-        "zoomeye": ["api_key"]
+        "zoomeye": ["api_key"],
+        "hunterhow": ["api_key"],
+        "greynoise": ["api_key"]
     }
 
     missing_keys = []

@@ -11,6 +11,7 @@ from exposor import __version__
 from exposor.feeds import query_builder
 from exposor.feeds.shodan.shodan_feed import Shodan
 from exposor.utils import logging_utils, search_utils, update_utils
+from exposor.feeds.greynoise.greynoise_feed import GreyNoise
 from exposor.utils.args_helpers import (
     CustomHelpFormatter,
     RegexValidator,
@@ -114,7 +115,7 @@ def parse_args():
     parser.add_argument(
         "-f", "--feed",
         nargs = '+',
-        choices = ["all", "censys", "fofa", "shodan", "zoomeye"],
+        choices = ["all", "censys", "fofa", "shodan", "zoomeye", "hunterhow", "greynoise"],
         help = "Chooese one or more data feeds to query from. Use `all` to query all supported feeds"
     )
     parser.add_argument(
@@ -134,6 +135,23 @@ def parse_args():
              "Specify the target domain to search"
              " (e.g. `example.com`)"
              )
+    )
+    parser.add_argument(
+        "--asn",
+        help = (
+            "Filter results by Autonomous System Number (e.g. `AS1234` or `1234`). "
+            "The AS prefix is optional and stripped automatically."
+        )
+    )
+    parser.add_argument(
+        "--enrich-greynoise",
+        action = "store_true",
+        default = False,
+        help = (
+            "Annotate each result IP with a GreyNoise classification "
+            "(benign/malicious/unknown) using the GreyNoise Community API. "
+            "Requires GREYNOISE_API_KEY to be configured."
+        )
     )
     parser.add_argument(
         "--limit",
@@ -213,6 +231,12 @@ def main():
         if not check_domain_args(args.domain_name, parser):
             parser.error("Invalid `hostname` provided (e.g. `example.com`).")
 
+    if args.asn:
+        raw_asn = args.asn.upper().lstrip("AS").strip()
+        if not raw_asn.isdigit():
+            parser.error("Invalid ASN provided. Expected format: `AS1234` or `1234`.")
+        args.asn = int(raw_asn)
+
     logging.info(f"Starting search for query: {args.query} ({args.query_type})")
 
     if args.query_type == "CPE":
@@ -249,13 +273,38 @@ def main():
         logging.warning("No results to display.")
         sys.exit(0)
 
+    if args.enrich_greynoise:
+        greynoise_key = os.getenv("GREYNOISE_API_KEY")
+        if not greynoise_key:
+            logging.warning("--enrich-greynoise requires GREYNOISE_API_KEY to be configured. Skipping enrichment.")
+        else:
+            logging.info("Running GreyNoise IP enrichment post-pass...")
+            flattened_results = GreyNoise.enrich_results(greynoise_key, flattened_results)
+
     logging.debug(f"result of feeds:{list_of_results}")
 
     max_rows = 9
 
+    enriched = args.enrich_greynoise and os.getenv("GREYNOISE_API_KEY")
     headers = ["IP", "Domain", "Port", "Country", "Technology", "Feed", "Timestamp"]
+    if enriched:
+        headers.append("GN Classification")
 
-    col_widths = {header: max(len(str(row.get(header.lower(), ""))) for row in flattened_results) for header in headers}
+    header_key_map = {
+        "IP": "ip",
+        "Domain": "domain",
+        "Port": "port",
+        "Country": "country",
+        "Technology": "technology",
+        "Feed": "feed",
+        "Timestamp": "timestamp",
+        "GN Classification": "greynoise_classification"
+    }
+
+    col_widths = {
+        header: max(len(str(row.get(header_key_map.get(header, header.lower()), ""))) for row in flattened_results)
+        for header in headers
+    }
     col_widths = {header: max(col_widths[header], len(header)) for header in headers}
 
     header_row = "  ".join(header.ljust(col_widths[header]) for header in headers)
@@ -266,10 +315,16 @@ def main():
         if i >= max_rows:
             row = "  ".join(str("---").ljust(col_widths[header]) for header in headers)
             print(row)
-            row = "  ".join(str(item.get(header.lower(), "")).ljust(col_widths[header]) for header in headers)
+            row = "  ".join(
+                str(item.get(header_key_map.get(header, header.lower()), "")).ljust(col_widths[header])
+                for header in headers
+            )
             print(row)
             break
-        row = "  ".join(str(item.get(header.lower(), "")).ljust(col_widths[header]) for header in headers)
+        row = "  ".join(
+            str(item.get(header_key_map.get(header, header.lower()), "")).ljust(col_widths[header])
+            for header in headers
+        )
         print(row)
 
     if args.output:
