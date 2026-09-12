@@ -23,6 +23,7 @@ class Shodan:
         country_code = args.country
         net = args.netblock
         domain_name = args.domain_name
+        asn = getattr(args, "asn", None)
         results = []
         page = 0
         try:
@@ -33,6 +34,8 @@ class Shodan:
                     q = f"{q} net:{net}"
                 if domain_name:
                     q = f"{q} hostname:{domain_name}"
+                if asn:
+                    q = f"{q} asn:AS{asn}"
 
                 page = 1
                 counter = 0

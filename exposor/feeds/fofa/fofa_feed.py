@@ -41,6 +41,7 @@ class Fofa:
         country_code = args.country
         net = args.netblock
         domain_name = args.domain_name
+        asn = getattr(args, "asn", None)
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:129.0) Gecko/20100101 Firefox/129.0",
@@ -58,6 +59,9 @@ class Fofa:
 
                 if domain_name:
                     q = f"{q} && host=\"{domain_name}\""
+
+                if asn:
+                    q = f"{q} && asn={asn}"
 
                 page = 1
                 counter = 0

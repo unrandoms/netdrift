@@ -37,6 +37,7 @@ class Censys:
         country_code = args.country
         net = args.netblock
         domain_name = args.domain_name
+        asn = getattr(args, "asn", None)
         results = []
         page = ""
         headers = {
@@ -55,6 +56,9 @@ class Censys:
 
                 if domain_name:
                     q = f"{q} AND dns.names:\"{domain_name}\""
+
+                if asn:
+                    q = f"{q} AND autonomous_system.asn={asn}"
 
                 page = ""
                 counter = 0
